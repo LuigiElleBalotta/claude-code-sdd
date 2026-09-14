@@ -173,8 +173,24 @@ avvio diverso.
 
 ### Modalità gestita (opzionale): applica il confine in automatico
 
+> **Non ancora pubblicato sul registro npm.** Per ora installalo
+> direttamente da GitHub — funziona già oggi, senza bisogno di pubblicarlo,
+> perché la cartella `dist/` compilata è inclusa nel repository (vedi
+> [CONTRIBUTING.md](CONTRIBUTING.md)). `npm install -g github:owner/repo`
+> è rotto su alcune versioni di npm per le installazioni **globali** in
+> particolare (crea un collegamento verso una cartella di cache temporanea
+> che non persiste) — clona il repository e installa dalla copia locale,
+> è il percorso affidabile:
+>
+> ```
+> git clone https://github.com/LuigiElleBalotta/claude-code-sdd.git
+> npm install -g ./claude-code-sdd
+> ```
+>
+> Una volta pubblicato, il comando sarà semplicemente
+> `npm install -g claude-code-sdd`.
+
 ```
-npm install -g claude-code-sdd
 claude-sdd launch
 ```
 
@@ -193,8 +209,10 @@ che avvia.
 ### Solo come CLI / libreria
 
 ```
-npx claude-code-sdd status
+npx github:LuigiElleBalotta/claude-code-sdd status
 ```
+
+(`npx claude-code-sdd status` una volta pubblicato il pacchetto su npm.)
 
 `claude-code-sdd` esporta anche la sua API TypeScript (`createEngine`,
 provider, modelli core, `SessionHost`/`LauncherStateMachine` del launcher)

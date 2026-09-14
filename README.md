@@ -120,8 +120,23 @@ extra process, no changed launch command.
 
 ### Managed mode (optional): enforce the boundary automatically
 
+> **Not yet published to the npm registry.** Install straight from GitHub
+> until it is — this works today, no publishing step required, because
+> the compiled `dist/` is committed to the repo (see
+> [CONTRIBUTING.md](CONTRIBUTING.md)). `npm install -g github:owner/repo`
+> is broken on some npm versions for **global** installs specifically (it
+> links to a temp cache folder that doesn't persist) — clone and install
+> from the local clone instead, which is the reliable path:
+>
+> ```
+> git clone https://github.com/LuigiElleBalotta/claude-code-sdd.git
+> npm install -g ./claude-code-sdd
+> ```
+>
+> Once it's published, the command will simply be
+> `npm install -g claude-code-sdd`.
+
 ```
-npm install -g claude-code-sdd
 claude-sdd launch
 ```
 
@@ -139,8 +154,10 @@ process it spawns.
 ### As a CLI / library only
 
 ```
-npx claude-code-sdd status
+npx github:LuigiElleBalotta/claude-code-sdd status
 ```
+
+(`npx claude-code-sdd status` once the package is published to npm.)
 
 `claude-code-sdd` also exports its TypeScript API (`createEngine`, providers,
 core models, the launcher's `SessionHost`/`LauncherStateMachine`) for
