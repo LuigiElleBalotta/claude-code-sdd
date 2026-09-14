@@ -130,8 +130,12 @@ extra process, no changed launch command.
 >
 > ```
 > git clone https://github.com/LuigiElleBalotta/claude-code-sdd.git
-> npm install -g ./claude-code-sdd
+> cd claude-code-sdd
+> npm install -g .
 > ```
+>
+> (already have the repo cloned locally, e.g. this one? just `cd` into it
+> and run `npm install -g .` — no need to clone it again.)
 >
 > Once it's published, the command will simply be
 > `npm install -g claude-code-sdd`.

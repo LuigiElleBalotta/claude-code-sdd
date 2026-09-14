@@ -184,8 +184,13 @@ avvio diverso.
 >
 > ```
 > git clone https://github.com/LuigiElleBalotta/claude-code-sdd.git
-> npm install -g ./claude-code-sdd
+> cd claude-code-sdd
+> npm install -g .
 > ```
+>
+> (hai già il repository clonato in locale, tipo questo? basta fare `cd`
+> dentro quella cartella e lanciare `npm install -g .` — non serve
+> clonarlo di nuovo.)
 >
 > Una volta pubblicato, il comando sarà semplicemente
 > `npm install -g claude-code-sdd`.
