@@ -65,7 +65,6 @@ async function readSpecification(projectRoot: string, specId: string): Promise<S
     design,
     tasks,
     status,
-    handoffId: undefined,
   };
 }
 

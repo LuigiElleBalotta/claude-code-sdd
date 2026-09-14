@@ -21,12 +21,13 @@ export async function runHandoff(engine, ctx, config, ack, json) {
         return 0;
     }
     const result = await engine.sync(ctx, config);
-    const pending = result.specs.filter((s) => s.status === 'handoff_pending');
+    const pendingAck = result.specs.filter((s) => s.status === 'handoff_pending');
+    const pendingBoundary = result.specs.filter((s) => s.status === 'context_boundary');
     if (json) {
-        printJson({ pending, handoffsCreated: result.handoffsCreated });
+        printJson({ pendingAck, pendingBoundary, handoffsCreated: result.handoffsCreated });
         return 0;
     }
-    if (pending.length === 0 && result.handoffsCreated.length === 0) {
+    if (pendingAck.length === 0 && pendingBoundary.length === 0 && result.handoffsCreated.length === 0) {
         printLine('No pending handoffs.');
         return 0;
     }
@@ -37,8 +38,12 @@ export async function runHandoff(engine, ctx, config, ack, json) {
             printLine(`  - ${step}`);
         }
     }
-    for (const spec of pending) {
+    for (const spec of pendingAck) {
         printLine(`Pending handoff: ${spec.summary.identity.id} (run with --ack ${spec.summary.identity.id} to clear)`);
+    }
+    for (const spec of pendingBoundary) {
+        printLine(`Context boundary requested: ${spec.summary.identity.id} ` +
+            '(restored automatically by the next fresh session, or by "claude-sdd launch")');
     }
     return 0;
 }

@@ -30,6 +30,11 @@ export async function loadConfig(projectRoot: string): Promise<SddConfig> {
       `${filePath}: "provider" must be one of "auto", "kiro", "generic" (got ${JSON.stringify(candidate.provider)}).`,
     );
   }
+  for (const field of ['handoffNotifications', 'autoContextBoundary'] as const) {
+    if (candidate[field] !== undefined && typeof candidate[field] !== 'boolean') {
+      throw actionable('CONFIG_INVALID_FIELD', `${filePath}: "${field}" must be a boolean.`);
+    }
+  }
 
   return mergeConfig(candidate);
 }

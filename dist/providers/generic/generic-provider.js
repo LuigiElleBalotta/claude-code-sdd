@@ -47,7 +47,6 @@ async function readSpecification(projectRoot, specId) {
         design,
         tasks,
         status,
-        handoffId: undefined,
     };
 }
 export const genericProvider = {

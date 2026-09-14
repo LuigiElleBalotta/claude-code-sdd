@@ -1,5 +1,5 @@
 import type { SddProvider, CreateSpecificationInput, ProviderContext } from '../models/provider.js';
-import type { Specification, SpecificationStatus, SpecificationSummary } from '../models/specification.js';
+import type { Specification, SpecificationIdentity, SpecificationStatus, SpecificationSummary } from '../models/specification.js';
 import type { SddConfig } from '../models/config.js';
 import type { Handoff } from '../models/handoff.js';
 import { actionable } from '../../utils/errors.js';
@@ -9,7 +9,7 @@ import { loadState, saveState, recordKey, type SddState, type SpecRecord } from 
 export interface SyncedSpecification {
   readonly summary: SpecificationSummary;
   readonly status: SpecificationStatus;
-  readonly handoffId: string | undefined;
+  readonly handoff: Handoff | undefined;
 }
 
 export interface SyncResult {
@@ -19,7 +19,20 @@ export interface SyncResult {
   readonly handoffsCreated: readonly Handoff[];
 }
 
+export interface RestoredHandoff {
+  readonly identity: SpecificationIdentity;
+  readonly handoff: Handoff | undefined;
+}
+
 const ACTIVE_STATUSES: readonly SpecificationStatus[] = ['approved', 'in_progress'];
+
+/** Statuses that only exist as a persisted overlay on top of a file-observed "completed". */
+const OVERLAY_STATUSES: readonly SpecificationStatus[] = [
+  'handoff_pending',
+  'context_boundary',
+  'handoff_completed',
+  'handoff_restored',
+];
 
 export class SddEngine {
   private readonly providers = new Map<string, SddProvider>();
@@ -73,7 +86,7 @@ export class SddEngine {
       version: 1,
       specs: {
         ...state.specs,
-        [key]: { status: spec.status, handoffId: undefined, updatedAt: new Date().toISOString() },
+        [key]: { status: spec.status, handoff: undefined, updatedAt: new Date().toISOString() },
       },
     };
     await saveState(ctx.projectRoot, nextState);
@@ -82,10 +95,17 @@ export class SddEngine {
 
   /**
    * Reconciles every discovered specification's file-observed status against
-   * persisted state, producing a handoff the first (and only the first) time
-   * a specification is observed to have completed. Idempotent: re-running
-   * with no file changes never creates a duplicate handoff, and a completed
-   * specification is not reported as "active" on subsequent syncs.
+   * persisted state. The only thing this method ever does past "completed"
+   * is: the FIRST time a specification is observed complete, produce a
+   * `Handoff` and land on `handoff_pending` (manual mode) or
+   * `context_boundary` (the default — a boundary has been requested).
+   *
+   * Deliberately never advances `context_boundary` -> `handoff_restored`:
+   * that transition means "a new session has actually started", which only
+   * `restoreContextBoundaries` (called from `SessionStart`) is entitled to
+   * declare. `sync()` runs on every `Stop`, so if it self-promoted boundaries
+   * it would falsely mark a still-running session's own pending boundary as
+   * restored the moment the user sent another message.
    */
   async sync(ctx: ProviderContext, config: SddConfig): Promise<SyncResult> {
     const provider = await this.resolveProvider(ctx, config);
@@ -99,28 +119,35 @@ export class SddEngine {
     for (const summary of summaries) {
       const key = recordKey(provider.id, summary.identity.id);
       const existing = nextSpecs[key];
-      let status = summary.status;
-      let handoffId = existing?.handoffId;
+      let status: SpecificationStatus = summary.status;
+      let handoff = existing?.handoff;
 
       if (summary.status === 'completed') {
-        if (existing?.status === 'handoff_pending' || existing?.status === 'handoff_completed') {
+        if (existing && OVERLAY_STATUSES.includes(existing.status)) {
+          // Already reacted to this completion (or an earlier one still
+          // pending) — never re-create a handoff or re-request a boundary.
           status = existing.status;
-        } else {
+        } else if (config.handoffNotifications) {
           const full = await provider.read(ctx, summary.identity.id);
-          if (full && config.handoffNotifications) {
+          if (full) {
             const id = buildHandoffId(full, now);
-            handoffsCreated.push(buildHandoff(full, id, now));
-            handoffId = id;
+            const created = buildHandoff(full, id, now);
+            handoffsCreated.push(created);
+            handoff = created;
           }
-          status = 'handoff_pending';
+          status = config.autoContextBoundary ? 'context_boundary' : 'handoff_pending';
+        } else {
+          status = 'completed';
         }
-      } else if (existing && (existing.status === 'handoff_pending' || existing.status === 'handoff_completed')) {
-        // Files regressed below "completed" (e.g. a task was unchecked) — resume tracking normally.
-        handoffId = undefined;
+      } else if (existing && OVERLAY_STATUSES.includes(existing.status)) {
+        // Files regressed below "completed" (a top-level task was
+        // unchecked again) — drop the stale handoff and resume normal
+        // tracking from whatever the files now say.
+        handoff = undefined;
       }
 
-      nextSpecs[key] = { status, handoffId, updatedAt: now.toISOString() };
-      specs.push({ summary, status, handoffId });
+      nextSpecs[key] = { status, handoff, updatedAt: now.toISOString() };
+      specs.push({ summary, status, handoff });
     }
 
     await saveState(ctx.projectRoot, { version: 1, specs: nextSpecs });
@@ -128,6 +155,42 @@ export class SddEngine {
     const active = specs.find((s) => ACTIVE_STATUSES.includes(s.status));
 
     return { provider: provider.id, specs, active, handoffsCreated };
+  }
+
+  /**
+   * Declares that a NEW session has started and consumes every specification
+   * currently at `context_boundary` for it: `context_boundary` ->
+   * `handoff_restored` (terminal). Idempotent — a specification already at
+   * `handoff_restored` is returned as already-restored, never re-restored,
+   * and calling this with no launcher ever having run works identically to
+   * calling it right after one did (nothing here depends on how or whether a
+   * process was restarted, only on what the persisted state says).
+   *
+   * Callers: the `SessionStart` hook, and only for a start reason that
+   * plausibly represents a clean context (`startup` / `clear` — see
+   * `src/claude-code/hooks/session-start.ts`). Never called from `sync()`.
+   */
+  async restoreContextBoundaries(ctx: ProviderContext): Promise<RestoredHandoff[]> {
+    const state = await loadState(ctx.projectRoot);
+    const restored: RestoredHandoff[] = [];
+    const nextSpecs: Record<string, SpecRecord> = { ...state.specs };
+    let changed = false;
+    const now = new Date().toISOString();
+
+    for (const [key, record] of Object.entries(state.specs)) {
+      if (record.status !== 'context_boundary') continue;
+      const [provider, ...rest] = key.split(':');
+      const identity: SpecificationIdentity = { provider: provider ?? 'unknown', id: rest.join(':') };
+      nextSpecs[key] = { ...record, status: 'handoff_restored', updatedAt: now };
+      restored.push({ identity, handoff: record.handoff });
+      changed = true;
+    }
+
+    if (changed) {
+      await saveState(ctx.projectRoot, { version: 1, specs: nextSpecs });
+    }
+
+    return restored;
   }
 
   async acknowledgeHandoff(ctx: ProviderContext, config: SddConfig, specId: string): Promise<void> {
@@ -141,12 +204,16 @@ export class SddEngine {
     if (existing.status !== 'handoff_pending' && existing.status !== 'handoff_completed') {
       throw actionable(
         'NOT_HANDOFF_PENDING',
-        `Specification "${specId}" has no pending handoff to acknowledge (status: ${existing.status}).`,
+        `Specification "${specId}" has no pending handoff to acknowledge (status: ${existing.status}). ` +
+          `"context_boundary" specifications are restored automatically by starting a fresh session, not acknowledged.`,
       );
     }
     await saveState(ctx.projectRoot, {
       version: 1,
-      specs: { ...state.specs, [key]: { ...existing, status: 'handoff_completed', updatedAt: new Date().toISOString() } },
+      specs: {
+        ...state.specs,
+        [key]: { ...existing, status: 'handoff_completed', updatedAt: new Date().toISOString() },
+      },
     });
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "claude-code-sdd",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Spec-Driven Development (SDD) engine for Claude Code, with a provider architecture and Kiro as the first supported provider.",
   "type": "module",
   "main": "./dist/index.js",
@@ -21,6 +21,7 @@
     "hooks",
     ".claude-plugin",
     "README.md",
+    "README.it.md",
     "LICENSE"
   ],
   "engines": {

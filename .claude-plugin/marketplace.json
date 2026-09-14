@@ -9,7 +9,7 @@
       "name": "claude-code-sdd",
       "source": "./",
       "description": "Spec-Driven Development for Claude Code, with Kiro as the first provider.",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }

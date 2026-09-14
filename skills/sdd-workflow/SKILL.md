@@ -36,10 +36,16 @@ version bumps that need no design.
 5. A specification is complete only when every **top-level** task is checked.
    Nested subtasks are organizational detail — they help track progress but
    never independently mark the specification done or block its completion.
-6. When `claude-sdd status` or a session-start/stop notice reports a handoff
-   is pending, tell the user this unit of SDD work is complete and that
-   starting a fresh session is recommended before moving to unrelated work.
-   Claude Code has no supported way for a plugin to reset context
-   automatically — recommend `/clear` or a new session, don't claim to do it.
+6. When a specification's last top-level task completes, a `Stop`-hook notice
+   reports that a context boundary has been requested (status
+   `context_boundary`, persisted). Tell the user the SDD work unit is
+   complete. If the project runs under `claude-sdd launch` (managed mode),
+   the boundary is enforced automatically — this session will be stopped and
+   a fresh one started for you, with nothing further to do. Otherwise,
+   recommend the user start a fresh Claude Code session; the next session's
+   own startup will automatically report the restored handoff. Either way,
+   never claim a context reset happened from inside this hook/skill — only
+   a session that has actually (re)started can say that, and it will say so
+   itself.
 
 Trivial changes never need any of this — just make them directly.

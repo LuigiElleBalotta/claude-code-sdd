@@ -24,6 +24,11 @@ export async function loadConfig(projectRoot) {
     if (candidate.provider !== undefined && !['auto', 'kiro', 'generic'].includes(candidate.provider)) {
         throw actionable('CONFIG_INVALID_PROVIDER', `${filePath}: "provider" must be one of "auto", "kiro", "generic" (got ${JSON.stringify(candidate.provider)}).`);
     }
+    for (const field of ['handoffNotifications', 'autoContextBoundary']) {
+        if (candidate[field] !== undefined && typeof candidate[field] !== 'boolean') {
+            throw actionable('CONFIG_INVALID_FIELD', `${filePath}: "${field}" must be a boolean.`);
+        }
+    }
     return mergeConfig(candidate);
 }
 //# sourceMappingURL=load-config.js.map

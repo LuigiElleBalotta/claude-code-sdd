@@ -8,7 +8,7 @@ describe('loadConfig', () => {
   it('returns defaults when no config file exists', async () => {
     await withTempDir(async (dir) => {
       const config = await loadConfig(dir);
-      expect(config).toEqual({ provider: 'auto', handoffNotifications: true });
+      expect(config).toEqual({ provider: 'auto', handoffNotifications: true, autoContextBoundary: true });
     });
   });
 
@@ -16,7 +16,7 @@ describe('loadConfig', () => {
     await withTempDir(async (dir) => {
       await writeFileEnsuringDir(path.join(dir, '.sdd', 'config.json'), JSON.stringify({ provider: 'kiro' }));
       const config = await loadConfig(dir);
-      expect(config).toEqual({ provider: 'kiro', handoffNotifications: true });
+      expect(config).toEqual({ provider: 'kiro', handoffNotifications: true, autoContextBoundary: true });
     });
   });
 
@@ -31,6 +31,16 @@ describe('loadConfig', () => {
     await withTempDir(async (dir) => {
       await writeFileEnsuringDir(path.join(dir, '.sdd', 'config.json'), '{ bad');
       await expect(loadConfig(dir)).rejects.toThrow(/not valid JSON/);
+    });
+  });
+
+  it('rejects a non-boolean autoContextBoundary', async () => {
+    await withTempDir(async (dir) => {
+      await writeFileEnsuringDir(
+        path.join(dir, '.sdd', 'config.json'),
+        JSON.stringify({ autoContextBoundary: 'yes' }),
+      );
+      await expect(loadConfig(dir)).rejects.toThrow(/must be a boolean/);
     });
   });
 });

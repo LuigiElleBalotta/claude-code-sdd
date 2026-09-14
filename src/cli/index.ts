@@ -9,6 +9,7 @@ import { runStatus } from './commands/status.js';
 import { runValidate } from './commands/validate.js';
 import { runInit } from './commands/init.js';
 import { runHandoff } from './commands/handoff.js';
+import { runLaunch } from './commands/launch.js';
 
 const USAGE = `claude-sdd — Spec-Driven Development engine for Claude Code
 
@@ -18,6 +19,13 @@ Usage:
   claude-sdd validate [--json]             Validate specification structure (exit 1 on issues)
   claude-sdd init <id> [--title <title>]  Create a new specification
   claude-sdd handoff [--ack <id>] [--json] Show or acknowledge a pending handoff
+  claude-sdd launch [--force] [--cwd <path>] [-- <claude args...>]
+                                           Managed mode: supervise Claude Code and auto-restart
+                                           it when an SDD context boundary is requested. Run
+                                           this from your own shell, never from inside Claude
+                                           Code itself. Anything after a lone "--" is forwarded
+                                           verbatim after "claude --bg" on every session started
+                                           (e.g. --dangerously-skip-permissions, --model, ...).
 
 Options:
   --cwd <path>   Project root to operate on (default: current directory)
@@ -35,6 +43,20 @@ async function main(): Promise<number> {
   }
 
   const rest = args.slice(1);
+
+  if (command === 'launch') {
+    // Handled before the strict parseArgs below: anything after "--" is
+    // arbitrary `claude` flags, which parseArgs' fixed option set would
+    // otherwise reject.
+    const dashIndex = rest.indexOf('--');
+    const ownArgs = dashIndex === -1 ? rest : rest.slice(0, dashIndex);
+    const claudeArgs = dashIndex === -1 ? [] : rest.slice(dashIndex + 1);
+    const force = ownArgs.includes('--force');
+    const cwdIndex = ownArgs.indexOf('--cwd');
+    const projectRoot = cwdIndex !== -1 && ownArgs[cwdIndex + 1] ? ownArgs[cwdIndex + 1]! : process.cwd();
+    return runLaunch(projectRoot, { force, claudeArgs });
+  }
+
   const { values, positionals } = parseArgs({
     args: rest,
     allowPositionals: true,

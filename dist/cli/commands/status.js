@@ -21,8 +21,15 @@ export async function runStatus(engine, ctx, config, json) {
         printLine('\nNo active specification.');
     }
     for (const handoff of result.handoffsCreated) {
+        const spec = result.specs.find((s) => s.summary.identity.id === handoff.specification.id);
         printLine(`\nHandoff ready: ${handoff.summary}`);
-        printLine(`Run "claude-sdd handoff --ack ${handoff.specification.id}" once reviewed.`);
+        if (spec?.status === 'context_boundary') {
+            printLine('A context boundary has been requested. Start a fresh Claude Code session to restore it automatically,');
+            printLine('or run this project under "claude-sdd launch" for that to happen without manual intervention.');
+        }
+        else {
+            printLine(`Run "claude-sdd handoff --ack ${handoff.specification.id}" once reviewed.`);
+        }
     }
     return 0;
 }
