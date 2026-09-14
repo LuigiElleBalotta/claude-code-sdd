@@ -1,0 +1,13 @@
+{
+  "name": "claude-code-sdd",
+  "displayName": "Claude Code SDD",
+  "version": "0.1.0",
+  "description": "Adds Spec-Driven Development (SDD) to Claude Code: a provider-neutral specification engine, lifecycle tracking, and a handoff workflow for long-running work. Kiro is the first supported provider.",
+  "author": {
+    "name": "Luigi Balotta"
+  },
+  "homepage": "https://github.com/LuigiElleBalotta/claude-code-sdd",
+  "repository": "https://github.com/LuigiElleBalotta/claude-code-sdd",
+  "license": "MIT",
+  "keywords": ["sdd", "spec-driven-development", "kiro", "specification", "planning"]
+}

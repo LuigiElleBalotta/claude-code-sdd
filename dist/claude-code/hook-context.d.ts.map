@@ -1,0 +1,1 @@
+{"version":3,"file":"hook-context.d.ts","sourceRoot":"","sources":["../../src/claude-code/hook-context.ts"],"names":[],"mappings":"AAAA,wBAAgB,kBAAkB,IAAI,MAAM,CAE3C;AAED,0FAA0F;AAC1F,wBAAsB,SAAS,IAAI,OAAO,CAAC,MAAM,CAAC,CAOjD;AAED,wBAAgB,cAAc,CAAC,aAAa,EAAE,MAAM,EAAE,iBAAiB,EAAE,MAAM,GAAG,SAAS,GAAG,IAAI,CAMjG"}

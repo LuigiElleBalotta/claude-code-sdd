@@ -1,0 +1,70 @@
+{
+  "name": "claude-code-sdd",
+  "version": "0.1.0",
+  "description": "Spec-Driven Development (SDD) engine for Claude Code, with a provider architecture and Kiro as the first supported provider.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "claude-sdd": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "skills",
+    "hooks",
+    ".claude-plugin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "validate": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "prepublishOnly": "npm run validate"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "plugin",
+    "spec-driven-development",
+    "sdd",
+    "kiro"
+  ],
+  "author": {
+    "name": "Luigi Balotta"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LuigiElleBalotta/claude-code-sdd.git"
+  },
+  "homepage": "https://github.com/LuigiElleBalotta/claude-code-sdd#readme",
+  "bugs": {
+    "url": "https://github.com/LuigiElleBalotta/claude-code-sdd/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8"
+  }
+}
