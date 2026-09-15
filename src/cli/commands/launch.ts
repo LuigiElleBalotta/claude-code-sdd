@@ -1,4 +1,5 @@
 import { runLauncher } from '../../launcher/launcher.js';
+import { worktreeIsolationWarning } from '../../launcher/check-worktree-isolation.js';
 import { printError, printLine } from '../output.js';
 
 export interface LaunchOptions {
@@ -32,5 +33,9 @@ export async function runLaunch(projectRoot: string, options: LaunchOptions): Pr
   if (options.claudeArgs.length > 0) {
     printLine(`Every session is started with: claude --bg ${options.claudeArgs.join(' ')}`);
   }
+
+  const warning = await worktreeIsolationWarning(projectRoot);
+  if (warning) printLine(`Warning: ${warning}`);
+
   return runLauncher(projectRoot, { claudeArgs: options.claudeArgs });
 }

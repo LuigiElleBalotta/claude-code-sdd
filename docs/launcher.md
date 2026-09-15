@@ -87,6 +87,32 @@ existing specifications or their status.
 
 ## Limitations
 
+- **Every managed-mode session stays classified as a background job, even
+  while attached — and the Edit-tool worktree-isolation guard has been
+  observed firing because of it.** `claude attach <id>` moves a session from
+  `background job · unattended` to `background job · attached`; Claude
+  Code's agent-view docs confirm it does not become "interactive". Whether
+  the isolation guard treats an attached session differently from an
+  unattended one isn't documented either way — but a `claude-sdd launch`
+  session hit the guard while attached and being driven interactively, which
+  is exactly what this note warns about: don't assume attaching exempts you
+  from it. Without `{"worktree": {"bgIsolation": "none"}}` in
+  `.claude/settings.json` (or `.claude/settings.local.json`, or your
+  user-level settings.json — normally `~/.claude/settings.json`, but if
+  `CLAUDE_CONFIG_DIR` is set that file moves to
+  `$CLAUDE_CONFIG_DIR/settings.json` directly, with no extra `.claude`
+  subfolder), an Edit/Write call can get blocked until the session moves
+  into a `.claude/worktrees/` copy of the repo, instead of editing this
+  checkout directly. `claude-sdd launch` checks `CLAUDE_CONFIG_DIR` and
+  prints a warning at startup if none of those files set it. The setting
+  itself is
+  only documented in a GitHub issue as of this writing (missing from the
+  settings-reference page despite being available since Claude Code
+  v2.1.143) — if it silently does nothing for you, your CLI may predate it.
+  Setting it is a real tradeoff, not a pure win: it disables a safety guard
+  meant to stop a background session from writing to a checkout you might be
+  using yourself at the same time — only do it if you're not also editing
+  this checkout by hand while the managed session runs.
 - Not verified end-to-end through a full restart cycle. `claude --bg`,
   `agents --json`, `stop`, and `rm` were each confirmed against the real
   binary (one of those confirmations happened by accident during

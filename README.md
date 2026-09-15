@@ -155,6 +155,67 @@ specification requests a context boundary — see
 detected via the `CLAUDECODE` environment variable Claude Code sets in every
 process it spawns.
 
+#### Important: managed mode can block edits until you set one thing
+
+This part is easy to miss, so read it before you rely on managed mode.
+
+`claude-sdd launch` starts every session as a **background** session (via
+`claude --bg`) and then attaches your terminal to it (`claude attach`). This
+is a safety feature *of Claude Code itself* (not this project): to stop a
+background session from editing a shared checkout you might also be editing
+by hand at the same time, Claude Code blocks that session's Edit/Write calls
+until it moves into an isolated copy of the repo (a git worktree under
+`.claude/worktrees/`). **Attaching your terminal to the session does not turn
+this protection off** — Claude Code still treats it as a background session
+even while you're driving it interactively.
+
+So: if you use managed mode and Claude suddenly gets blocked mid-edit,
+asking to move into a worktree, that's this feature — it isn't a bug in your
+project. (There is a separate, real bug in the worktree it creates —
+covered in [docs/launcher.md#limitations](docs/launcher.md#limitations) —
+so this is also a reason to avoid triggering it if you can.) `claude-sdd
+launch` prints a warning about this every time it starts, unless you've
+turned the protection off yourself.
+
+**To turn it off**, so managed-mode sessions can edit this checkout directly
+(the way plugin mode always could), add this JSON to **one** of these files
+— checked in this order, first one that exists and sets it wins:
+
+1. `.claude/settings.local.json` — this project, this machine only, never
+   committed to git. The safest place if you're the only one using managed
+   mode here.
+2. `.claude/settings.json` — this project, shared with your team via git.
+3. Your **user-level** settings file, which applies to every project.
+   Normally that's `~/.claude/settings.json` — but if you set the
+   `CLAUDE_CONFIG_DIR` environment variable (for example inside a launch
+   script, e.g. `set "CLAUDE_CONFIG_DIR=%USERPROFILE%\.claude-work"` on
+   Windows), it's `%CLAUDE_CONFIG_DIR%\settings.json` instead, with **no**
+   extra `.claude` subfolder — `CLAUDE_CONFIG_DIR` replaces `~/.claude`
+   entirely, it doesn't sit inside it.
+
+```json
+{
+  "worktree": {
+    "bgIsolation": "none"
+  }
+}
+```
+
+**Read this before you flip it:** this setting exists specifically to
+protect you from a background session and a human editing the same files at
+the same time. Turning it off is fine if you never hand-edit this checkout
+while a `claude-sdd launch` session is running against it — which is the
+normal way to use managed mode (you're driving that one attached session,
+not also opening the files yourself elsewhere). If you *do* sometimes edit
+this checkout by hand in parallel, leave the protection on and expect the
+occasional worktree prompt instead.
+
+This guard, and exactly how `claude attach` does or doesn't affect it, is
+Claude Code's own behavior — this project can warn you about it but cannot
+change it. Full technical account, including what's officially documented
+versus what's only been observed:
+[docs/launcher.md#limitations](docs/launcher.md#limitations).
+
 ### As a CLI / library only
 
 ```
@@ -311,6 +372,11 @@ relying on managed mode for anything important. In short:
 - Plain plugin mode (no launcher) still restores a completed specification's
   handoff automatically the moment you next start a fresh session — it just
   doesn't decide *when* that happens for you.
+- Managed mode can trigger Claude Code's own background-session Edit guard
+  (it blocks direct edits until the session moves into a git worktree, even
+  while attached) — see
+  [Important: managed mode can block edits](#important-managed-mode-can-block-edits-until-you-set-one-thing)
+  above for the one setting that avoids it and the tradeoff it involves.
 
 ## Security
 

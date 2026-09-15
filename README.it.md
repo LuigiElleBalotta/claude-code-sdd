@@ -211,6 +211,74 @@ per default si rifiuta di partire in quel caso, rilevandolo tramite la
 variabile d'ambiente `CLAUDECODE` che Claude Code imposta in ogni processo
 che avvia.
 
+#### Importante: la modalità gestita può bloccare le modifiche finché non imposti una cosa
+
+Questa parte è facile da perdere, quindi leggila prima di fidarti della
+modalità gestita.
+
+`claude-sdd launch` avvia ogni sessione come sessione **in background**
+(tramite `claude --bg`) e poi ci attacca il tuo terminale (`claude attach`).
+Questa è una funzione di sicurezza *di Claude Code stesso* (non di questo
+progetto): per impedire a una sessione in background di modificare un
+checkout condiviso che magari stai modificando anche tu a mano nello stesso
+momento, Claude Code blocca le chiamate Edit/Write di quella sessione finché
+non si sposta in una copia isolata del repository (un git worktree dentro
+`.claude/worktrees/`). **Attaccare il tuo terminale alla sessione non
+disattiva questa protezione** — Claude Code continua a considerarla una
+sessione in background anche mentre la stai guidando tu, in modo
+interattivo.
+
+Quindi: se usi la modalità gestita e Claude si blocca all'improvviso a metà
+di una modifica, chiedendo di spostarsi in un worktree, è questa la causa —
+non è un bug del tuo progetto. (C'è anche un bug vero, separato, nel
+worktree che viene creato — descritto in
+[docs/launcher.md#limitations](docs/launcher.md#limitations) — quindi è un
+motivo in più per evitare di farlo scattare, se puoi.) `claude-sdd launch`
+stampa un avviso su questo ogni volta che parte, a meno che tu non abbia già
+disattivato la protezione da solo.
+
+**Per disattivarla**, così le sessioni in modalità gestita possono
+modificare questo checkout direttamente (come poteva già fare la modalità
+plugin), aggiungi questo JSON a **uno solo** di questi file — controllati in
+quest'ordine, vince il primo che esiste e lo imposta:
+
+1. `.claude/settings.local.json` — solo questo progetto, solo questa
+   macchina, mai committato su git. Il posto più sicuro se sei l'unico a
+   usare qui la modalità gestita.
+2. `.claude/settings.json` — questo progetto, condiviso con il team tramite
+   git.
+3. Il tuo file di impostazioni **a livello utente**, che vale per ogni
+   progetto. Normalmente è `~/.claude/settings.json` — ma se imposti la
+   variabile d'ambiente `CLAUDE_CONFIG_DIR` (ad esempio dentro uno script di
+   avvio, tipo `set "CLAUDE_CONFIG_DIR=%USERPROFILE%\.claude-work"` su
+   Windows), diventa invece `%CLAUDE_CONFIG_DIR%\settings.json`, **senza**
+   un'ulteriore sottocartella `.claude` — `CLAUDE_CONFIG_DIR` sostituisce del
+   tutto `~/.claude`, non sta dentro di essa.
+
+```json
+{
+  "worktree": {
+    "bgIsolation": "none"
+  }
+}
+```
+
+**Leggi questo prima di attivarlo:** questa impostazione esiste apposta per
+proteggerti dal caso in cui una sessione in background e un umano modificano
+gli stessi file nello stesso momento. Disattivarla va bene se non modifichi
+mai a mano questo checkout mentre una sessione `claude-sdd launch` sta
+girando su di esso — che è il modo normale di usare la modalità gestita
+(stai guidando tu quella singola sessione attaccata, non stai anche aprendo
+i file altrove). Se invece capita che tu modifichi questo checkout a mano in
+parallelo, lascia la protezione attiva e aspettati ogni tanto la richiesta di
+worktree.
+
+Questa protezione, ed esattamente come `claude attach` la influenzi o no, è
+un comportamento di Claude Code stesso — questo progetto può solo avvisarti,
+non può cambiarlo. Il resoconto tecnico completo, con quello che è
+documentato ufficialmente e quello che è stato solo osservato:
+[docs/launcher.md#limitations](docs/launcher.md#limitations) (in inglese).
+
 ### Solo come CLI / libreria
 
 ```
@@ -365,6 +433,12 @@ breve:
   l'handoff di una specifica completata in automatico non appena avvii tu
   la prossima sessione pulita — semplicemente non decide *quando* questo
   accade al posto tuo.
+- La modalità gestita può far scattare la protezione Edit sulle sessioni in
+  background di Claude Code stesso (blocca le modifiche dirette finché la
+  sessione non si sposta in un git worktree, anche da attaccata) — vedi
+  [Importante: la modalità gestita può bloccare le modifiche](#importante-la-modalità-gestita-può-bloccare-le-modifiche-finché-non-imposti-una-cosa)
+  sopra per l'unica impostazione che lo evita e per il compromesso che
+  comporta.
 
 ## Sicurezza
 
