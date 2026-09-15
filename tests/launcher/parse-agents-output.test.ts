@@ -1,5 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { extractIdsFromAgentsJson, extractSessionId } from '../../src/launcher/parse-agents-output.js';
+import {
+  extractIdsFromAgentsJson,
+  extractSessionId,
+  extractSessionIdFromBgOutput,
+} from '../../src/launcher/parse-agents-output.js';
+
+describe('extractSessionIdFromBgOutput', () => {
+  it('parses the real `claude --bg` stdout shape', () => {
+    const output = [
+      'backgrounded · 11b6a0fe',
+      '  claude agents             list sessions',
+      '  claude attach 11b6a0fe    open in this terminal',
+      '  claude logs 11b6a0fe      show recent output',
+      '  claude stop 11b6a0fe      stop this session',
+      '',
+    ].join('\n');
+    expect(extractSessionIdFromBgOutput(output)).toBe('11b6a0fe');
+  });
+
+  it('resolves from the "backgrounded" line alone', () => {
+    expect(extractSessionIdFromBgOutput('backgrounded · abc123')).toBe('abc123');
+  });
+
+  it('resolves from the "claude attach" hint line alone', () => {
+    expect(extractSessionIdFromBgOutput('  claude attach abc123    open in this terminal')).toBe('abc123');
+  });
+
+  it('returns undefined when the two anchors disagree', () => {
+    const output = 'backgrounded · abc123\n  claude attach def456    open in this terminal';
+    expect(extractSessionIdFromBgOutput(output)).toBeUndefined();
+  });
+
+  it('returns undefined when neither anchor is present', () => {
+    expect(extractSessionIdFromBgOutput('something unrelated')).toBeUndefined();
+  });
+});
 
 describe('extractSessionId', () => {
   it('resolves the single known id that appears in the captured output', () => {

@@ -97,9 +97,16 @@ existing specifications or their status.
   unit-tested against a fake session host
   (`tests/launcher/launcher-state-machine.test.ts`); the real process glue
   around it is not, on purpose, to avoid repeatedly starting real nested
-  sessions while iterating. If `claude attach` behaves differently than
-  documented on detach, or the id-extraction from `claude --bg`'s output
-  fails, please report it — `startBackground()` fails loudly with the
+  sessions while iterating.
+- `claude --bg`'s stdout has since been observed in the wild:
+  `backgrounded · <id>` plus a `claude attach <id>` hint line.
+  `startBackground()` parses the id straight out of that text now, rather
+  than requiring `claude agents --json` to also list it — the latter was
+  observed to come back empty immediately after a session starts, which
+  previously caused `LAUNCH_ID_UNRESOLVED` even though the id was right
+  there in the `--bg` output. If `claude attach` behaves differently than
+  documented on detach, or a future `--bg` output doesn't match this shape,
+  please report it — `startBackground()` still fails loudly with the
   captured output attached rather than guessing.
 - Requires the `claude` CLI to be on `PATH` under the exact name `claude`.
 - Background sessions may have different permission-prompt handling before

@@ -214,13 +214,32 @@ What that accident actually confirmed, incidentally:
   `src/launcher/parse-agents-output.ts` exactly.
 - `claude stop <id>` and `claude rm <id>` both work as documented.
 
-What it did **not** confirm, because the terminal output was truncated
-(piped through `head`) before it could be observed: whether
-`extractSessionId` correctly parsed the id out of that specific `--bg`
-call's own stdout text. That remains the one genuinely unverified piece —
-if it fails in practice, `startBackground()` throws `LAUNCH_ID_UNRESOLVED`
-with the captured output attached, rather than guessing or attaching to the
-wrong session (see "Never attach to an id you inferred" above).
+What it did **not** confirm at the time, because the terminal output was
+truncated (piped through `head`) before it could be observed: whether the id
+could be parsed out of that specific `--bg` call's own stdout text. That has
+since been confirmed live (a user's own `claude --bg` run), and the parsing
+that shipped at the time failed on it: `agents --json` came back empty right
+after the session started, and the old logic *required* a matching id from
+that list before it would trust anything found in the `--bg` stdout — so a
+real id sitting in plain text in stdout was thrown away, and
+`startBackground()` correctly refused to guess, throwing
+`LAUNCH_ID_UNRESOLVED` with the captured output attached (see "Never attach
+to an id you inferred" above) instead of attaching to the wrong session.
+
+The confirmed real shape of `claude --bg`'s stdout:
+
+```
+backgrounded · 11b6a0fe
+  claude agents             list sessions
+  claude attach 11b6a0fe    open in this terminal
+  claude logs 11b6a0fe      show recent output
+  claude stop 11b6a0fe      stop this session
+```
+
+`extractSessionIdFromBgOutput` (`src/launcher/parse-agents-output.ts`) now
+reads the id directly from the `backgrounded` line and the `claude attach`
+hint line and is tried first; `agents --json` cross-checking is kept only as
+a fallback for output that doesn't match this shape.
 
 Also still unverified: whether `claude attach <id>` returns control to the
 launcher's terminal when the underlying session is stopped, or drops into

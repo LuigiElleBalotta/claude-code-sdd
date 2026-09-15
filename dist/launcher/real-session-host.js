@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { actionable } from '../utils/errors.js';
-import { extractIdsFromAgentsJson, extractSessionId } from './parse-agents-output.js';
+import { extractIdsFromAgentsJson, extractSessionId, extractSessionIdFromBgOutput } from './parse-agents-output.js';
 import { buildCommandLine } from './shell-quote.js';
 /**
  * Every command here is exactly one documented `claude` subcommand
@@ -12,11 +12,13 @@ import { buildCommandLine } from './shell-quote.js';
  * argument itself and hands `spawn` one fully-formed string instead.
  *
  * The `--bg` / `attach` / `stop` / `agents --json` behavior itself HAS been
- * confirmed against the real `claude` binary during development (a
- * background session was started, listed via `agents --json`, and cleaned
- * up with `stop` + `rm`) — see docs/context-boundaries.md for exactly what
- * that confirmed and what is still unverified (the id-extraction path in
- * particular was not cleanly observed end-to-end in that run).
+ * confirmed against the real `claude` binary — see docs/context-boundaries.md.
+ * `claude --bg`'s stdout was also confirmed in the wild to print the id
+ * directly (`backgrounded · <id>`, plus a `claude attach <id>` hint line),
+ * so `startBackground` reads it from there first and only falls back to
+ * cross-checking `agents --json` if that text doesn't match — `agents --json`
+ * had been observed to come back empty right after a session starts, which
+ * previously left a real id undiscovered.
  */
 export class RealSessionHost {
     cwd;
@@ -28,8 +30,13 @@ export class RealSessionHost {
         if (code !== 0) {
             throw actionable('LAUNCH_START_FAILED', `"claude --bg${extraArgs.length ? ' ' + extraArgs.join(' ') : ''}" exited with code ${code}.\nstdout: ${stdout}\nstderr: ${stderr}`);
         }
-        const ids = await this.listIds();
-        const id = extractSessionId(`${stdout}\n${stderr}`, ids);
+        const combinedOutput = `${stdout}\n${stderr}`;
+        let id = extractSessionIdFromBgOutput(combinedOutput);
+        let ids = [];
+        if (!id) {
+            ids = await this.listIds();
+            id = extractSessionId(combinedOutput, ids);
+        }
         if (!id) {
             throw actionable('LAUNCH_ID_UNRESOLVED', 'Could not determine the session id "claude --bg" just created from its output. ' +
                 `Known session ids: [${ids.join(', ')}]. Captured output:\nstdout: ${stdout}\nstderr: ${stderr}\n` +
